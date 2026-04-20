@@ -1,0 +1,8 @@
+# Task Backlog
+
+Add unsolved tasks here. Hermes pulls the next task automatically during autonomous cycles.
+Target weakest rubric category when generating new tasks.
+
+Format: [TASK DESCRIPTION] | [TARGET_DIMENSION] | [ADDED_DATE]
+
+---

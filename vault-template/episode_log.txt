@@ -1,0 +1,10 @@
+# Episode Log
+
+Format per entry:
+[DATE] | [TASK] | [REWARD] | [STATUS] | [SENIOR]
+[PLAN SUMMARY]
+[KEY OUTPUT POINTS]
+[RUBRIC: Acc/Ev/Reas/Clar/Eff]
+[POLICY_UPDATE if any]
+
+---
