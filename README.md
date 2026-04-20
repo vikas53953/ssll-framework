@@ -270,12 +270,49 @@ This 9-point gap is why external review is mandatory. The bias loop is real and 
 
 ---
 
+## Shared Backend Relay (Bot-to-Bot Communication)
+
+Telegram blocks bots from reading each other's messages. SSLL solves this with a shared JSON file as the communication bus.
+
+```
+Hermes writes cycle → hive_state.json (PENDING_REVIEW)
+                            │
+                            ▼
+                    Biff reads file directly
+                    (WSL filesystem access)
+                            │
+                            ▼
+                    Biff writes score back (REVIEWED)
+                            │
+                            ▼
+              Hermes detects REVIEWED → updates Reward Board
+```
+
+**Files:**
+- `vault-template/hive_state.json` — shared state template
+- `hive_watcher.py` — runs on the Biff machine, polls for PENDING_REVIEW and sends Telegram notification
+
+**To start the watcher:**
+```bash
+# Set your bot token
+export TELEGRAM_BOT_TOKEN=your_token_here
+export TELEGRAM_CHAT_ID=your_chat_id
+
+python hive_watcher.py
+```
+
+If Hermes runs in WSL and Biff runs on the Windows host, the watcher reads `\\wsl$\Ubuntu\home\<user>\obsidian_notes\hive_state.json` directly — no network required.
+
+---
+
 ## Built With
 
 - Student agent: any LLM (Gemma, Claude, GPT, etc.)
-- Memory: [Obsidian](https://obsidian.md) (plain markdown files — any editor works)
+- Memory: [Obsidian](https://obsidian.md) + Hindsight (persistent cross-session memory)
 - Scheduling: system cron
 - Senior reviewer: Claude, GPT, or human
+- Inter-agent relay: shared JSON file via WSL filesystem
+- Bias guard: `reward_guard.py` — auto-sanitizes unauthorized self-scored entries
 
 ---
 

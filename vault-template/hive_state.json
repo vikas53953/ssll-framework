@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "framework": "SSLL",
+    "canonical_path": "~/obsidian_notes/hive_state.json",
+    "version": "1.0"
+  },
+  "current_cycle": {
+    "status": "IDLE",
+    "cycle_id": null,
+    "student_output": null,
+    "senior_review": null,
+    "reward_score": null,
+    "senior": null,
+    "timestamp": null,
+    "reviewed_at": null
+  },
+  "queue": [],
+  "history_log": []
+}
