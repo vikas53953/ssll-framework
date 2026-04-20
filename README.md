@@ -6,6 +6,21 @@
 
 ---
 
+## The Problem This Solves
+
+Most AI agents give you one answer and move on. If the answer is wrong or shallow, you fix it manually. Next time, the agent makes the same mistake again — it has no memory of what went wrong.
+
+SSLL fixes this. It gives an AI agent the ability to:
+1. Attempt a task
+2. Get scored by an external reviewer
+3. Calculate a reward from the score
+4. Write a policy update based on what went wrong
+5. Do better next time — automatically
+
+Over 10–20 cycles, measurable improvement appears in the scores. The agent doesn't just answer questions — it **learns how to answer better**.
+
+---
+
 ## Overview
 
 SSLL (Senior-Supervised Learning Loop) is a prompt-engineering framework that applies reinforcement-style feedback to improve AI agent outputs over time — without retraining model weights.
@@ -217,6 +232,27 @@ Copy Biff's scores back to Hermes and tell it to:
 | 19 | Automation Scout | Auto-detect and build automatable tasks |
 
 Full prompt text → [`prompts/`](prompts/)
+
+---
+
+## Key Concepts Explained
+
+| Term | Plain English |
+|------|--------------|
+| **SSLL** | The full loop: student attempts → senior scores → reward calculated → policy updated → repeat |
+| **Student agent (Hermes)** | The AI that does the work and learns from feedback |
+| **Senior reviewer (Biff)** | A separate AI or human that scores the student's output — never the same session |
+| **Rubric** | A fixed 5-dimension scoring system (Accuracy, Evidence, Reasoning, Clarity, Efficiency) on a 0–5 scale |
+| **Reward** | A single score 0–100 calculated from the weighted rubric scores |
+| **Policy** | A written rule Hermes follows in future cycles — stored in `policies.md` |
+| **DNR (Do Not Repeat)** | A list of specific mistakes that must never happen again. Pre-flight check runs before every cycle. |
+| **PENDING_REVIEW** | Status assigned to any cycle not yet scored by Biff. Self-estimates are never accepted. |
+| **Biff Queue** | The nightly report listing all PENDING_REVIEW cycles so the senior can batch-score efficiently |
+| **Theory of Mind** | Hermes predicts its own score *before* Biff reviews, then analyzes the gap afterward — builds self-awareness |
+| **Reward Board** | A markdown file tracking all scores, moving average, best/worst runs, and weekly trends |
+| **Task Backlog** | A queue of unsolved problems Hermes pulls from during autonomous cycles |
+| **Automation Scout** | Prompt 19 — Hermes automatically detects repetitive tasks and builds code to automate them |
+| **Episode** | One complete SSLL cycle: plan + attempt + review + reward + memory write |
 
 ---
 
