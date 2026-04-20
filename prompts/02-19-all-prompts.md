@@ -201,3 +201,30 @@ For every task or request the user makes, run this background check:
 5. NEVER skip this scan.
 
 Goal: reduce manual touches. Every hour saved compounds.
+
+---
+
+## Prompt 20 — Plan Approval Gate
+
+Add this as the FIRST step of every SSLL cycle, before any execution:
+
+1. PLAN SUBMISSION: Draft your plan (≤ 6 lines) for the task.
+
+2. HALT: Do not proceed. Write this exact block and stop:
+
+```
+[PLAN_APPROVAL_REQUEST]
+Task: [task name]
+Plan:
+[your 6-line plan]
+Status: PENDING_PLAN_APPROVAL
+Awaiting: Senior approval before execution begins.
+```
+
+3. WAIT: Do not write [STUDENT_OUTPUT] until you receive explicit approval ("approved" or "proceed").
+
+4. ON APPROVAL: Execute the plan exactly as submitted. If changes are needed, submit a revised plan for approval — do not modify mid-execution.
+
+5. LOG: Write the approved plan to episode_log.txt alongside the output.
+
+**Why:** This gate prevents unauthorized autonomous execution. No cycle runs without explicit senior sign-off on the plan first.

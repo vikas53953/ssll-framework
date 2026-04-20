@@ -230,6 +230,7 @@ Copy Biff's scores back to Hermes and tell it to:
 | 17 | Theory of Mind | Predict scores before review, analyze gap after |
 | 18 | Autonomous Sleep Mode | Cron-driven daytime self-improvement |
 | 19 | Automation Scout | Auto-detect and build automatable tasks |
+| 20 | Plan Approval Gate | Hermes submits plan only, halts until Senior approves before executing |
 
 Full prompt text → [`prompts/`](prompts/)
 
@@ -267,6 +268,33 @@ See [`examples/cycle-001.md`](examples/cycle-001.md) — Linear Attention bottle
 | Gap | 9 points |
 
 This 9-point gap is why external review is mandatory. The bias loop is real and measurable.
+
+---
+
+## Hindsight Memory Integration
+
+Hermes supports [Hindsight](https://github.com/vectorize-io/hindsight) as a native memory provider — a structured memory backend with 91.4% recall accuracy on long-horizon benchmarks.
+
+**Why it matters for SSLL:** By default, each cron trigger gives Hermes a fresh context with no memory of past policy violations. Hindsight gives Hermes persistent cross-session memory so it actually remembers its constraints, DNR rules, and past cycle feedback between runs.
+
+**Setup:**
+```bash
+hermes memory setup
+# Select option: hindsight
+# Choose: local or API key mode
+
+hermes memory status
+# Verify: hindsight (long-term, searchable, declarative)
+```
+
+**Three operating modes:**
+| Mode | Behavior |
+|------|---------|
+| `hybrid` | Auto-injection before every turn + explicit recall/retain/reflect tools |
+| `context` | Auto-injection only |
+| `tools` | Explicit tool calls only (hindsight_recall, hindsight_retain, hindsight_reflect) |
+
+**Recommended mode:** `hybrid` — Hermes automatically loads relevant memories (policies, past failures) before each cycle.
 
 ---
 
