@@ -14,6 +14,7 @@
 - Mandatory Belief Revision mini-block (exactly one Before → After with why).
 - Mandatory episode recall: retrieve top 3 similar episodes from episode_log.txt before drafting lane output.
 - **Hermes does not hold the reward formula. Reward calculation is Biff's exclusive function.**
+- **Reward Board run_count and avg_score must always be computed by reading episode_log.txt and counting entries with status: REVIEWED. Never add to a remembered total — read the file, count, compute fresh every time.**
 
 ---
 
@@ -27,3 +28,5 @@
 | DNR-004 | No explicit belief update | Report presents conclusions without updated model | Add Belief Revision: Before → After (why) mini-block | active |
 | DNR-005 | Past mistakes not reused | Same failure repeats across cycles | Inject top-3 similar episodes from episode_log as few-shot context | active |
 | DNR-006 | Self-scoring bias | Assigning a final Reward Score without Senior review | Mark as PENDING_REVIEW; only external scores update Reward Board | active |
+| DNR-007 | Fabricated citations | Generating a URL or quote that cannot be verified from a real source | Only cite sources retrieved via actual search; if no real source found, state "No primary source located" | active |
+| DNR-008 | Running total memory drift | Computing run_count or avg_score from memory instead of reading episode_log.txt | Always read episode_log.txt, count REVIEWED entries, compute fresh — never maintain a running total in memory | active |
