@@ -10,14 +10,36 @@
 
 SSLL (Senior-Supervised Learning Loop) is a prompt-engineering framework that applies reinforcement-style feedback to improve AI agent outputs over time — without retraining model weights.
 
-The core idea: instead of one-shot prompting, an agent (Hermes) attempts tasks repeatedly, receives rubric-based scores from an external senior reviewer (Biff), calculates a reward, and updates its own policies in a persistent knowledge base. Over cycles, the agent's outputs measurably improve.
+The core idea: instead of one-shot prompting, a **Student agent** attempts tasks repeatedly, receives rubric-based scores from an external **Senior reviewer**, calculates a reward score, and updates its own policies in a persistent knowledge base. Over cycles, the agent's outputs measurably improve.
 
 **Key properties:**
-- No model fine-tuning required — works on any LLM
+- No model fine-tuning required — works on any LLM (Claude, GPT, Gemini, Gemma, etc.)
 - External review only — self-scoring is explicitly prohibited to prevent bias loops
-- Persistent memory via Obsidian — every episode, policy, and score is stored
-- Autonomous operation — runs on a cron schedule while you're away
-- DNR guardrails — mistakes are tracked and enforced at pre-flight
+- Persistent memory via Obsidian — every episode, policy, and score is stored on disk
+- Autonomous operation — runs on a cron schedule without human intervention
+- DNR guardrails — mistakes are tracked and blocked at pre-flight check
+
+---
+
+## Who Are the Agents?
+
+SSLL uses two agent roles. You can name them anything — in this project they are called **Hermes** (student) and **Biff** (senior).
+
+### Hermes — The Student Agent
+The agent that attempts tasks, builds plans, writes evidence-backed answers, and improves its policies over time. In this project, Hermes runs on a local LLM (Gemma via Ollama) but can be any agent: Claude, GPT, or a custom setup.
+
+### Biff — The Senior Reviewer
+Biff is the **external reviewer** that scores Hermes's work. Biff is NOT a separate product — it is simply a second AI session (or a human) that reads the output and applies the rubric.
+
+**In practice, Biff can be:**
+| Option | How |
+|--------|-----|
+| Claude (claude.ai or API) | Paste Hermes's output, ask Claude to score using the rubric |
+| GPT-4o / GPT-5 | Same — paste output, apply rubric prompt |
+| A human reviewer | Read the output, fill in the rubric manually |
+| A second Hermes instance | Run a separate session with the senior-review prompt |
+
+> The only rule: **Biff must never be the same session as Hermes.** Self-scoring creates a bias loop — agents consistently overrate their own work (demonstrated in cycle-001: self-estimate 95.0, external score 86.0).
 
 ---
 
@@ -27,27 +49,33 @@ The core idea: instead of one-shot prompting, an agent (Hermes) attempts tasks r
 User gives task
       │
       ▼
- Hermes (Student)
  ┌─────────────────────────────────┐
- │ 1. Plan (≤ 8 lines)            │
- │ 2. Draft with cited evidence   │
- │ 3. Theory of Mind prediction   │
- │ 4. Mark PENDING_REVIEW         │
- └─────────────────────────────────┘
-      │
-      ▼
- Biff (Senior — External)
+ │       HERMES (Student)          │
+ │                                 │
+ │  1. Plan (≤ 8 lines)           │
+ │  2. Draft with cited evidence  │
+ │  3. Predict own score (ToM)    │
+ │  4. Mark PENDING_REVIEW        │
+ └─────────────┬───────────────────┘
+               │
+               ▼
  ┌─────────────────────────────────┐
- │ Score rubric (0–5 per dim)     │
- │ Identify weakest dimension     │
- │ Provide concrete fixes         │
- └─────────────────────────────────┘
-      │
-      ▼
- Reward Calculation
-      │
-      ▼
- Memory Write → Policy Update → Next Cycle
+ │       BIFF (Senior)             │
+ │  (separate AI session / human)  │
+ │                                 │
+ │  Score rubric (0–5 per dim)    │
+ │  Identify weakest dimension    │
+ │  Give concrete fix per gap     │
+ └─────────────┬───────────────────┘
+               │
+               ▼
+        Reward Calculation
+               │
+               ▼
+   Memory Write + Policy Update
+               │
+               ▼
+          Next Cycle ↺
 ```
 
 ---
@@ -80,15 +108,15 @@ Score range: **0–100**. Policy update triggered when reward < 70.
 |--------|------|
 | No self-scoring | All cycles without external review are `PENDING_REVIEW`. Self-estimates never update the Reward Board. |
 | Evidence standard | Direct quotes from arXiv, CVEs, or official docs. Homepage links score Evidence = 0. |
-| DNR enforcement | Pre-flight check before every cycle. Failed patterns listed in `policies.md` must not recur. |
-| Causal framing | "Why it matters" must state the domain impact (network/security/infrastructure), not just describe the event. |
+| DNR enforcement | Pre-flight check before every cycle. Failed patterns in `policies.md` must not recur. |
+| Causal framing | "Why it matters" must state domain impact, not just describe the event. |
 | Plan cap | Plans must be ≤ 8 lines. |
 
 ---
 
 ## Autonomous Operation
 
-Hermes runs on a cron schedule during daytime hours:
+Hermes runs on a cron schedule:
 
 - **Every 2 hours (9am–7pm):** Pull task from backlog → run full SSLL cycle → mark `PENDING_REVIEW`
 - **10:30pm daily:** Send Biff Queue report — all pending cycles with self-estimates for batch scoring
@@ -105,8 +133,61 @@ If the backlog is empty, Hermes auto-generates a task targeting its weakest rubr
 ├── Reward-Board.md        # Running scores, weekly moving average, best/worst runs
 ├── policies.md            # Active prompt policies and DNR list
 ├── task_backlog.txt       # Unsolved task queue
-├── pending_reviews.txt    # Cycles awaiting external scoring
+├── pending_reviews.txt    # Cycles awaiting Biff scoring
 └── automations_built.txt  # Auto-built scripts log (Prompt 19)
+```
+
+---
+
+## Quickstart — Implement in 5 Steps
+
+### Step 1 — Copy vault template
+```bash
+cp -r vault-template/* ~/obsidian_notes/
+```
+
+### Step 2 — Set up your Student agent (Hermes)
+
+Open your preferred AI agent or chat interface. Paste the contents of [`prompts/01-setup.md`](prompts/01-setup.md) to initialize.
+
+Load prompts 1–19 in order from the [`prompts/`](prompts/) folder. Each prompt is a self-contained instruction block.
+
+### Step 3 — Set up your Senior reviewer (Biff)
+
+Open a **separate** AI session (different tab, different account, or a human). This is Biff.
+
+When Hermes marks a cycle `PENDING_REVIEW`, copy the output and paste it to Biff with this prompt:
+
+```
+You are Biff, a senior reviewer. Score the following output using this rubric:
+- Accuracy (0–5): factual correctness
+- Evidence (0–5): direct quotes and article-level citations only
+- Reasoning (0–5): causal chain quality
+- Clarity (0–5): structure and readability
+- Efficiency (0–5): plan brevity
+
+For each dimension: give the score and one specific fix if below 5.
+Then calculate: Reward = (Acc×0.35 + Ev×0.25 + Reas×0.20 + Clar×0.10 + Eff×0.10) × 20
+
+Output to review:
+[PASTE HERMES OUTPUT HERE]
+```
+
+### Step 4 — Return the score to Hermes
+
+Copy Biff's scores back to Hermes and tell it to:
+- Write the official reward to `Reward-Board.md`
+- Update `episode_log.txt` with status: `REVIEWED`
+- Apply any policy updates to `policies.md` if score < 70
+
+### Step 5 — Set up autonomous cron jobs
+
+```bash
+# Run SSLL cycle every 2 hours from 9am to 7pm
+0 9,11,13,15,17,19 * * * <your-hermes-trigger-command>
+
+# Daily Biff Queue report at 10:30pm
+30 22 * * * <your-hermes-report-command>
 ```
 
 ---
@@ -132,64 +213,43 @@ If the backlog is empty, Hermes auto-generates a task targeting its weakest rubr
 | 15 | Reward Board Expansion | Weekly metrics |
 | 16 | Artifact Locations | Canonical file paths |
 | 17 | Theory of Mind | Predict scores before review, analyze gap after |
-| 18 | Autonomous Sleep Mode | Cron-driven overnight/daytime self-improvement |
-| 19 | Automation Scout | One-man-show mode: auto-detect and build automatable tasks |
+| 18 | Autonomous Sleep Mode | Cron-driven daytime self-improvement |
+| 19 | Automation Scout | Auto-detect and build automatable tasks |
 
-Full prompt text → see [`prompts/`](prompts/)
-
----
-
-## Quickstart
-
-**1. Copy vault template**
-```bash
-cp -r vault-template/* ~/obsidian_notes/
-```
-
-**2. Load prompts into your agent**
-Load prompts 1–19 from the `prompts/` folder in order. Set your agent as Hermes (student).
-
-**3. Configure a senior reviewer**
-Assign a separate agent or human as Biff. Biff must be external — never the same instance as Hermes.
-
-**4. Initialize**
-Send Prompt 1 to Hermes to initialize the loop and confirm memory files exist.
-
-**5. Set up cron jobs**
-```bash
-# Autonomous daytime loop (every 2 hours, 9am–7pm)
-0 9,11,13,15,17,19 * * * <trigger-hermes> "Autonomous Sleep Mode — Prompt 18"
-
-# Daily Biff Queue report (10:30pm)
-30 22 * * * <trigger-hermes> "Send daily SSLL report"
-```
+Full prompt text → [`prompts/`](prompts/)
 
 ---
 
-## Real Cycle Example
+## Real Example
 
-See [`examples/cycle-001.md`](examples/cycle-001.md) — Linear Attention bottleneck analysis, officially scored **86.0** by external senior.
+See [`examples/cycle-001.md`](examples/cycle-001.md) — Linear Attention bottleneck analysis.
 
-Self-estimate before review: 95.0. External score: 86.0. **Gap = 9 points** — exactly why external review is mandatory.
+| | Score |
+|---|---|
+| Self-estimate (Hermes, before review) | 95.0 |
+| External score (Biff, after review) | **86.0** |
+| Gap | 9 points |
+
+This 9-point gap is why external review is mandatory. The bias loop is real and measurable.
 
 ---
 
 ## Built With
 
-- Agent: [Gemma / any LLM via Hermes](https://github.com/vikas53953)
-- Memory: [Obsidian](https://obsidian.md)
+- Student agent: any LLM (Gemma, Claude, GPT, etc.)
+- Memory: [Obsidian](https://obsidian.md) (plain markdown files — any editor works)
 - Scheduling: system cron
-- Senior review: Claude (Biff)
+- Senior reviewer: Claude, GPT, or human
 
 ---
 
 ## Author
 
-**Vikas Mittal** — Network Security / DC Engineer, Cisco Systems  
+**Vikas Mittal** — Network Security / DC Engineer, Cisco Systems
 GitHub: [@vikas53953](https://github.com/vikas53953)
 
 ---
 
 ## License
 
-MIT
+MIT — use freely, attribution appreciated.
