@@ -2,14 +2,16 @@
 """
 SSLL Hive Watcher
 Polls hive_state.json for PENDING_REVIEW cycles and sends a Telegram notification.
+Also implements circuit breaker: 3 consecutive scores below CIRCUIT_BREAKER_THRESHOLD
+triggers a cron-halt notification.
 Run on the Windows/Claude Code machine. Reads the WSL filesystem directly.
 
 Usage:
   python hive_watcher.py
 
 Requires:
-  - TELEGRAM_BOT_TOKEN env var (or set BOT_TOKEN below)
-  - TELEGRAM_CHAT_ID env var (or set CHAT_ID below)
+  - TELEGRAM_BOT_TOKEN env var
+  - TELEGRAM_CHAT_ID env var (or set below)
 """
 
 import json
@@ -20,16 +22,18 @@ import urllib.parse
 from datetime import datetime
 
 # --- Config ---
-# Reads from env vars. Set them or hardcode here for local use only (never commit tokens).
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "1072392470")
 
-# Path to hive_state.json — update distro name if not Ubuntu
-HIVE_STATE = r"\\wsl$\Ubuntu\home\vikasmit\obsidian_notes\hive_state.json"
-POLL_SECS  = 60
+HIVE_STATE            = r"\\wsl$\Ubuntu\home\vikasmit\obsidian_notes\hive_state.json"
+EPISODE_LOG           = r"\\wsl$\Ubuntu\home\vikasmit\obsidian_notes\episode_log.txt"
+POLL_SECS             = 60
+CIRCUIT_BREAKER_THRESHOLD = 60   # score below this triggers warning
+CIRCUIT_BREAKER_COUNT     = 3    # consecutive sub-threshold scores to trigger halt
 
 # --- State ---
-last_notified_cycle = None
+last_notified_cycle   = None
+recent_scores         = []   # rolling window for circuit breaker
 
 
 def send_telegram(text):
@@ -42,6 +46,25 @@ def send_telegram(text):
         urllib.request.urlopen(url, data=data, timeout=10)
     except Exception as e:
         print(f"[HIVE_WATCHER] Telegram send failed: {e}")
+
+
+def check_circuit_breaker(score, lane=""):
+    global recent_scores
+    recent_scores.append(score)
+    recent_scores = recent_scores[-CIRCUIT_BREAKER_COUNT:]  # keep last N
+
+    if (len(recent_scores) == CIRCUIT_BREAKER_COUNT and
+            all(s < CIRCUIT_BREAKER_THRESHOLD for s in recent_scores)):
+        msg = (
+            f"[SSLL] CIRCUIT BREAKER TRIGGERED\n"
+            f"Last {CIRCUIT_BREAKER_COUNT} scores all below {CIRCUIT_BREAKER_THRESHOLD}: "
+            f"{recent_scores}\n"
+            f"Lane: {lane}\n"
+            f"Recommend: pause autonomous cron (job aed8b2ca0fe0) until root cause fixed."
+        )
+        send_telegram(msg)
+        print(f"[HIVE_WATCHER] CIRCUIT BREAKER — scores {recent_scores}")
+        recent_scores = []  # reset after alert
 
 
 def check_hive():
@@ -59,12 +82,12 @@ def check_hive():
     cid    = cycle.get("cycle_id")
 
     if status == "PENDING_REVIEW" and cid and cid != last_notified_cycle:
-        ts    = datetime.now().strftime("%H:%M")
-        task  = (cycle.get("student_output") or "")[:120]
-        msg   = (
+        ts   = datetime.now().strftime("%H:%M")
+        task = (cycle.get("student_output") or cycle.get("task", ""))[:120]
+        msg  = (
             f"[SSLL] New cycle ready for Biff review ({ts})\n"
             f"Cycle: {cid}\n"
-            f"Output preview: {task}...\n\n"
+            f"Preview: {task}...\n\n"
             f"Tell Biff: 'check hive_state' to score this cycle."
         )
         send_telegram(msg)
@@ -72,13 +95,17 @@ def check_hive():
         last_notified_cycle = cid
 
     elif status == "REVIEWED" and cid == last_notified_cycle:
-        pass  # already notified, silently wait for next cycle
+        # Check reward score for circuit breaker
+        score = cycle.get("reward_score")
+        if score and isinstance(score, (int, float)):
+            check_circuit_breaker(float(score), lane=cid)
 
 
 def main():
     print("[HIVE_WATCHER] SSLL Hive Watcher started.")
     print(f"[HIVE_WATCHER] Watching: {HIVE_STATE}")
     print(f"[HIVE_WATCHER] Notifying chat: {CHAT_ID}")
+    print(f"[HIVE_WATCHER] Circuit breaker: {CIRCUIT_BREAKER_COUNT} consecutive scores below {CIRCUIT_BREAKER_THRESHOLD}")
     print(f"[HIVE_WATCHER] Poll interval: {POLL_SECS}s | Ctrl+C to stop\n")
 
     while True:
