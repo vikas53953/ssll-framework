@@ -8,13 +8,15 @@
 - Any lane output without at least one article-level URL (not a homepage) is automatically scored 0 and marked NEEDS_REWORK.
 - Every claim must link to the specific article, post, or advisory — never link to a homepage.
 - Insert Causal Link pass after evidence aggregation.
-- Mandatory NVD citation for every CVE.
+- Mandatory NVD citation for every CVE. For ALERTS: link to individual advisory page, not the advisory directory.
 - Plan length capped at 6 lines.
 - Mandatory Counterfactual Check before final answer on analytical/news outputs.
 - Mandatory Belief Revision mini-block (exactly one Before → After with why).
 - Mandatory episode recall: retrieve top 3 similar episodes from episode_log.txt before drafting lane output.
 - **Hermes does not hold the reward formula. Reward calculation is Biff's exclusive function.**
-- **Reward Board run_count and avg_score must always be computed by reading episode_log.txt and counting entries with status: REVIEWED. Never add to a remembered total — read the file, count, compute fresh every time.**
+- **Reward Board run_count and avg_score must always be computed by reading episode_log.txt and counting entries with status: REVIEWED. Never add to a remembered total.**
+- **FOR arXiv PAPERS:** Use ar5iv HTML endpoint (`https://ar5iv.labs.arxiv.org/html/[ID]`) instead of PDF links for evidence extraction. PDFs get truncated or misparsed — HTML renders cleanly.
+- **FOR SECURITY ANALYSIS:** Always prioritize direct vendor security bulletins (e.g., nvidia.com/security, amd.com/security) over secondary aggregation sources.
 
 ---
 
@@ -23,7 +25,7 @@
 | mistake_id | pattern | example | prevention_rule | status |
 |------------|---------|---------|-----------------|--------|
 | DNR-001 | Lack of causal probe | Reporting CVE and OPS anomaly as separate events | Mandatory causal_link_check after evidence aggregation | active |
-| DNR-002 | Fluffy planning | Plans exceeding 8 lines | Strict length cap (max 6 lines) | active |
+| DNR-002 | Fluffy planning | Plans exceeding 6 lines | Strict length cap (max 6 lines) | active |
 | DNR-003 | Overconfidence without falsification | Final report has no explicit failure condition | Add Counterfactual Check with 1–2 concrete conditions | active |
 | DNR-004 | No explicit belief update | Report presents conclusions without updated model | Add Belief Revision: Before → After (why) mini-block | active |
 | DNR-005 | Past mistakes not reused | Same failure repeats across cycles | Inject top-3 similar episodes from episode_log as few-shot context | active |
