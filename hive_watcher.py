@@ -72,7 +72,7 @@ def check_hive():
         last_notified_cycle = cid
 
     elif status == "REVIEWED" and cid == last_notified_cycle:
-        print(f"[HIVE_WATCHER] Cycle {cid} is now REVIEWED — waiting for next cycle")
+        pass  # already notified, silently wait for next cycle
 
 
 def main():

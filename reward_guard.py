@@ -43,21 +43,30 @@ def sanitize_episode_log():
             clean.append(entry)
             continue
 
-        has_reward  = bool(re.search(r"\[REWARD_SCORE\]|Reward\s*[:=]\s*[\d.]+", entry, re.IGNORECASE))
+        # Match [REWARD_SCORE] tag, or "Reward: X" or "Score: X" on any line
+        has_reward  = bool(re.search(
+            r"\[REWARD_SCORE\]|Reward\s*[:=]\s*[\d.]+|Score\s*[:=]\s*[\d.]+",
+            entry, re.IGNORECASE
+        ))
         has_senior  = SENIOR_TAG in entry
         is_clean    = "self_estimate" in entry or "PENDING_REVIEW" in entry
 
         if has_reward and not has_senior and not is_clean:
-            match = re.search(r"(?:Reward|REWARD_SCORE)[:\s=]+([\d.]+)", entry, re.IGNORECASE)
+            # Extract score value from any of the known patterns
+            match = re.search(
+                r"(?:Reward|Score|REWARD_SCORE)[:\s=]+([\d.]+)",
+                entry, re.IGNORECASE
+            )
             val   = match.group(1) if match else "unknown"
 
+            # Replace [REWARD_SCORE] line (same-line or next-line score)
             entry = re.sub(
-                r"\[REWARD_SCORE\][^\n]*",
+                r"\[REWARD_SCORE\][^\n]*(\nScore\s*[:=]\s*[\d.]+)?",
                 f"[REWARD_SCORE] self_estimate: {val} | status: PENDING_REVIEW [auto-flagged by reward_guard]",
                 entry,
             )
             entry = re.sub(
-                r"Reward\s*[:=]\s*[\d.]+",
+                r"(?:Reward|Score)\s*[:=]\s*[\d.]+",
                 f"self_estimate: {val} | PENDING_REVIEW",
                 entry,
                 flags=re.IGNORECASE,
