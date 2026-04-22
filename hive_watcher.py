@@ -20,9 +20,21 @@ import time
 import urllib.request
 import urllib.parse
 from datetime import datetime
+from pathlib import Path
+
+
+def _load_bot_token():
+    """Read token from Claude Code's Telegram plugin .env — no manual setup needed."""
+    env_path = Path.home() / ".claude" / "channels" / "telegram" / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            if line.startswith("TELEGRAM_BOT_TOKEN="):
+                return line.split("=", 1)[1].strip()
+    return os.environ.get("TELEGRAM_BOT_TOKEN", "")
+
 
 # --- Config ---
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+BOT_TOKEN = _load_bot_token()
 CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "1072392470")
 
 HIVE_STATE            = r"\\wsl$\Ubuntu\home\vikasmit\obsidian_notes\hive_state.json"
