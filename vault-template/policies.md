@@ -1,12 +1,24 @@
 # SSLL Global Learning Policies
 
-## Reward Formula (updated per Opus 4.7 recommendation)
+## Reward Formula (v3 — Perplexity gated scoring + relative efficiency, 2026-04-23)
 ```
 Reward = (Accuracy×0.30 + Evidence×0.35 + Reasoning×0.20 + Clarity×0.10 + Efficiency×0.05) × 20
 ```
-- Evidence is the highest-weighted dimension (0.35) — the most-failed dimension
-- If Evidence ≤ 2/5, cap total score at 60 regardless of other scores
-- Any DNR violation = cycle score 0, no partial credit
+
+### Scoring Gates (applied in order before weighted formula)
+- **Gate 1 — Correctness:** If Accuracy < 3/5 → cap total score at 50, regardless of other dimensions. A factually wrong answer cannot score above 50 even with strong evidence.
+- **Gate 2 — Evidence floor:** If Evidence ≤ 2/5 → cap total score at 60, regardless of other dimensions.
+- **Gate 3 — DNR violation:** Any DNR violation = cycle score 0, no partial credit.
+- Gates are applied in order. The lowest applicable cap wins.
+
+### Efficiency Penalty (relative, group-anchored)
+```
+efficiency_penalty = max(0, (this_cycle_tool_calls - median_last_5_tool_calls) × 0.5)
+Final_Reward = Raw_Reward - efficiency_penalty
+```
+- Penalizes tool call excess relative to Hermes's own recent baseline, not an absolute threshold.
+- If no prior history (< 5 cycles), skip penalty.
+- Biff reads tool_call_count from the cycle's episode_log entry to compute this.
 
 ---
 
@@ -28,6 +40,15 @@ Reward = (Accuracy×0.30 + Evidence×0.35 + Reasoning×0.20 + Clarity×0.10 + Ef
 - **FOR arXiv PAPERS:** Use ar5iv HTML endpoint (`https://ar5iv.labs.arxiv.org/html/[ID]`) instead of PDF links. HTML renders cleanly; PDFs get truncated.
 - **FOR SECURITY ANALYSIS:** Always prioritize direct vendor security bulletins over secondary aggregation sources.
 - **Causal chain required:** After identifying a finding, add one sentence: "What this means for network/security operations: [specific impact]"
+
+---
+
+## Task Variance Policy (90/10 Split)
+- **90% VERIFIABLE tasks:** CVE analysis, paper comparison, benchmark evaluation — tasks with checkable ground truth. Biff can verify the answer is objectively correct or wrong.
+- **10% SOFT tasks:** Threat briefings, ops summaries, planning outputs — rubric-scored only, no ground truth.
+- Tag every task in task_backlog.txt as `[VERIFIABLE]` or `[SOFT]`.
+- If the backlog has no VERIFIABLE tasks, Hermes must generate one targeting its weakest rubric dimension before running a SOFT task.
+- Prevents score inflation from gaming easy-to-satisfy rubric tasks.
 
 ---
 

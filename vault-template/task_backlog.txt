@@ -3,6 +3,13 @@
 Add unsolved tasks here. Hermes pulls the next task automatically during autonomous cycles.
 Target weakest rubric category when generating new tasks.
 
-Format: [TASK DESCRIPTION] | [TARGET_DIMENSION] | [ADDED_DATE]
+## Format
+[TASK DESCRIPTION] | [TYPE: VERIFIABLE or SOFT] | [TARGET_DIMENSION] | [ADDED_DATE]
+
+## Task Type Rules (90/10 Variance Policy)
+- VERIFIABLE: CVE analysis, paper comparison, benchmark eval — has checkable ground truth
+- SOFT: Threat briefing, ops summary, planning output — rubric-scored only
+- Run 9 VERIFIABLE per 1 SOFT. If no VERIFIABLE tasks remain, generate one before running SOFT.
+- Tag every task when adding.
 
 ---

@@ -95,25 +95,45 @@ User gives task
 
 ---
 
-## Reward Formula
+## Reward Formula (v3)
 
 ```
-Reward = (Accuracy × 0.35 + Evidence × 0.25 + Reasoning × 0.20 + Clarity × 0.10 + Efficiency × 0.10) × 20
+Reward = (Accuracy × 0.30 + Evidence × 0.35 + Reasoning × 0.20 + Clarity × 0.10 + Efficiency × 0.05) × 20
 ```
 
 Score range: **0–100**. Policy update triggered when reward < 70.
 
+### Scoring Gates (applied before weighted formula)
+| Gate | Condition | Cap |
+|------|-----------|-----|
+| Correctness | Accuracy < 3/5 | Score capped at 50 |
+| Evidence floor | Evidence ≤ 2/5 | Score capped at 60 |
+| DNR violation | Any DNR rule triggered | Score = 0 |
+
+Gates are evaluated in order; lowest applicable cap wins. Inspired by Perplexity's gated aggregation reward design (2026).
+
+### Efficiency Penalty (relative)
+```
+efficiency_penalty = max(0, (this_cycle_tool_calls - median_last_5_tool_calls) × 0.5)
+Final_Reward = Raw_Reward - efficiency_penalty
+```
+Penalizes excess tool calls relative to Hermes's own recent baseline, not an absolute threshold.
+
 ---
 
-## Rubric
+## Rubric (v2 — Atomic Sub-Checks)
 
-| Dimension | Weight | What it measures |
-|-----------|--------|-----------------|
-| Accuracy | 35% | Factual correctness |
-| Evidence | 25% | Direct quotes, article-level citations (no homepages) |
-| Reasoning | 20% | Causal chain quality, counterfactual checks |
-| Clarity | 10% | Structure and readability |
-| Efficiency | 10% | Plan brevity, token economy |
+Each dimension is scored via binary sub-checks for reproducible, deterministic scoring.
+
+| Dimension | Weight | Sub-checks |
+|-----------|--------|------------|
+| Accuracy | 30% | Correct claims · No fabricated data · Valid causal chain |
+| Evidence | 35% | Article-level URL · Verbatim quote · Quote matches claim |
+| Reasoning | 20% | Counterfactual check · Belief revision block · Numeric comparison |
+| Clarity | 10% | Structured output · No unexplained jargon |
+| Efficiency | 5% | Plan ≤ 6 lines · No padding |
+
+Sub-check scoring: 3/3 → 5, 2/3 → 3, 1/3 → 1, 0/3 → 0. See `prompts/02-19-all-prompts.md` Prompt 10 for full sub-check definitions.
 
 ---
 
@@ -330,6 +350,26 @@ python hive_watcher.py
 ```
 
 If Hermes runs in WSL and Biff runs on the Windows host, the watcher reads `\\wsl$\Ubuntu\home\<user>\obsidian_notes\hive_state.json` directly — no network required.
+
+---
+
+## Changelog
+
+### v3 — 2026-04-23 (Perplexity-inspired scoring upgrades)
+- **Gated scoring:** Correctness (Accuracy < 3/5) now caps score at 50 before weighted formula runs. Closes loophole where wrong-but-well-cited answers scored 70+.
+- **Atomic rubric:** Each dimension decomposed into 2–3 binary sub-checks. Scoring is now deterministic and reproducible across Biff sessions.
+- **Relative efficiency penalty:** Excess tool calls penalized relative to Hermes's own 5-cycle median baseline, not an absolute count. Makes Efficiency dimension meaningful.
+- **90/10 task variance:** Tasks tagged VERIFIABLE or SOFT. Enforces 9 verifiable per 1 soft to prevent score inflation via easy rubric tasks.
+- Inspired by: [Perplexity — Advancing Search-Augmented Language Models](https://research.perplexity.ai/articles/advancing-search-augmented-language-models)
+
+### v2 — 2026-04 (Evidence reweighting)
+- Evidence weight raised to 0.35 (was 0.25) per Opus 4.7 recommendation — most-failed dimension.
+- Added reward_guard.py middleware for self-score prevention.
+- Added hive_state.json relay for bot-to-bot communication.
+- Hindsight memory integration for cross-session persistence.
+
+### v1 — Initial release
+- 20-prompt SSLL stack, DNR enforcement, Reward Board, autonomous cron operation.
 
 ---
 

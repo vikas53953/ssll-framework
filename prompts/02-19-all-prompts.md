@@ -90,18 +90,39 @@ Before every cycle, check the DNR list in policies.md. If any listed failure pat
 
 ---
 
-## Prompt 10 — Fixed Rubric
+## Prompt 10 — Fixed Rubric (v2 — Atomic Sub-Checks, 2026-04-23)
 
-Use a 0–5 scale for Accuracy, Evidence, Reasoning, Clarity, Token Efficiency.
+Use a 0–5 scale. Each dimension has atomic binary sub-checks. Score = sub-checks passed / total, mapped to 0–5.
 
-| Score | Meaning |
-|-------|---------|
-| 5 | Flawless — no gaps |
-| 4 | Strong — minor gap |
-| 3 | Adequate — one clear weakness |
-| 2 | Weak — multiple gaps |
-| 1 | Poor — mostly missing |
-| 0 | Absent or fabricated |
+### Accuracy (3 sub-checks)
+- [ ] A1: Every factual claim is correct against its cited source
+- [ ] A2: No fabricated statistics, dates, or version numbers
+- [ ] A3: Causal chain is logically valid (cause → effect traceable)
+Score: 3/3=5, 2/3=3, 1/3=1, 0/3=0
+
+### Evidence (3 sub-checks)
+- [ ] E1: At least one article-level URL present (not a homepage)
+- [ ] E2: At least one verbatim quote present
+- [ ] E3: Quote matches the claim it supports (no quote-mining)
+Score: 3/3=5, 2/3=3, 1/3=1, 0/3=0
+
+### Reasoning (3 sub-checks)
+- [ ] R1: Counterfactual Check present (what would falsify this?)
+- [ ] R2: Belief Revision block present (Before → After + why)
+- [ ] R3: At least one numeric comparison between alternatives
+Score: 3/3=5, 2/3=3, 1/3=1, 0/3=0
+
+### Clarity (2 sub-checks)
+- [ ] C1: Answer is structured (headers, bullets, or clear sections)
+- [ ] C2: No undefined jargon without explanation
+Score: 2/2=5, 1/2=2, 0/2=0
+
+### Efficiency (2 sub-checks)
+- [ ] Ef1: Plan is ≤ 6 lines
+- [ ] Ef2: No padding or repetition of prior context
+Score: 2/2=5, 1/2=2, 0/2=0
+
+**Holistic override:** If sub-checks pass but output is clearly wrong/misleading, Biff may override individual dimension score with written justification.
 
 ---
 
