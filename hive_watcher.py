@@ -95,12 +95,13 @@ def check_hive():
 
     if status == "PENDING_REVIEW" and cid and cid != last_notified_cycle:
         ts   = datetime.now().strftime("%H:%M")
-        task = (cycle.get("student_output") or cycle.get("task", ""))[:120]
         msg  = (
-            f"[SSLL] New cycle ready for Biff review ({ts})\n"
+            f"[BIFF_ACTION_REQUIRED]\n"
             f"Cycle: {cid}\n"
-            f"Preview: {task}...\n\n"
-            f"Tell Biff: 'check hive_state' to score this cycle."
+            f"Status: PENDING_REVIEW\n"
+            f"Time: {ts}\n\n"
+            f"Read episode_log.txt for the full output and score this cycle as Biff using the v3 atomic rubric. "
+            f"Then update hive_state.json to REVIEWED and post the score here."
         )
         send_telegram(msg)
         print(f"[HIVE_WATCHER] Notified — cycle {cid} is PENDING_REVIEW")
