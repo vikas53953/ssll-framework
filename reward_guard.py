@@ -101,7 +101,7 @@ def check_reward_board():
 def main():
     print("[REWARD_GUARD] SSLL Reward Guard started.")
     print(f"[REWARD_GUARD] Watching {EPISODE_LOG} and {REWARD_BOARD}")
-    print(f"[REWARD_GUARD] Violations → {VIOLATIONS}")
+    print(f"[REWARD_GUARD] Violations -> {VIOLATIONS}")
     print(f"[REWARD_GUARD] Poll interval: {POLL_SECS}s  |  Ctrl+C to stop\n")
 
     ep_mtime = rb_mtime = 0
